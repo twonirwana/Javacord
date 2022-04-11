@@ -373,6 +373,11 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
     private static final ConcurrentHashMap<Long, Sticker> stickers = new ConcurrentHashMap<>();
 
     /**
+     * If all new messages should be added to the cache
+     */
+    private final boolean addAllMessageToCacheEnabled;
+
+    /**
      * A map with all cached messages.
      */
     private final Map<Long, WeakReference<Message>> messages = new ConcurrentHashMap<>();
@@ -480,7 +485,7 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
     ) {
         this(accountType, token, currentShard, totalShards, intents, waitForServersOnStartup, waitForUsersOnStartup,
                 true, globalRatelimiter, gatewayIdentifyRatelimiter, proxySelector, proxy, proxyAuthenticator,
-                trustAllCertificates, ready, null, Collections.emptyMap(), Collections.emptyList(), false);
+                trustAllCertificates, ready, null, Collections.emptyMap(), Collections.emptyList(), false, true);
     }
 
     /**
@@ -527,7 +532,7 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
             Dns dns) {
         this(accountType, token, currentShard, totalShards, intents, waitForServersOnStartup, waitForUsersOnStartup,
                 true, globalRatelimiter, gatewayIdentifyRatelimiter, proxySelector, proxy, proxyAuthenticator,
-                trustAllCertificates, ready, dns, Collections.emptyMap(), Collections.emptyList(), false);
+                trustAllCertificates, ready, dns, Collections.emptyMap(), Collections.emptyList(), false, true);
     }
 
     /**
@@ -582,7 +587,8 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
                     List<Function<DiscordApi, GloballyAttachableListener>>
                     > listenerSourceMap,
             List<Function<DiscordApi, GloballyAttachableListener>> unspecifiedListeners,
-            boolean userCacheEnabled
+            boolean userCacheEnabled,
+            boolean addAllMessageToCacheEnabled
     ) {
         this.accountType = accountType;
         this.token = token;
@@ -597,6 +603,7 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
         this.proxyAuthenticator = proxyAuthenticator;
         this.trustAllCertificates = trustAllCertificates;
         this.userCacheEnabled = userCacheEnabled;
+        this.addAllMessageToCacheEnabled = addAllMessageToCacheEnabled;
         this.reconnectDelayProvider = x ->
                 (int) Math.round(Math.pow(x, 1.5) - (1 / (1 / (0.1 * x) + 1)) * Math.pow(x, 1.5));
         //Always add the GUILDS intent unless it is not required anymore for Javacord to be functional.
@@ -680,24 +687,26 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
                 }
             });
 
-            // After minimum JDK 9 is required this can be switched to use a Cleaner
-            getThreadPool().getScheduler().scheduleWithFixedDelay(() -> {
-                messageCacheLock.lock();
-                try {
-                    for (Reference<? extends Message> messageRef = messagesCleanupQueue.poll();
-                            messageRef != null;
-                            messageRef = messagesCleanupQueue.poll()) {
-                        Long messageId = messageIdByRef.remove(messageRef);
-                        if (messageId != null) {
-                            messages.remove(messageId, messageRef);
+            if (addAllMessageToCacheEnabled) {
+                // After minimum JDK 9 is required this can be switched to use a Cleaner
+                getThreadPool().getScheduler().scheduleWithFixedDelay(() -> {
+                    messageCacheLock.lock();
+                    try {
+                        for (Reference<? extends Message> messageRef = messagesCleanupQueue.poll();
+                             messageRef != null;
+                             messageRef = messagesCleanupQueue.poll()) {
+                            Long messageId = messageIdByRef.remove(messageRef);
+                            if (messageId != null) {
+                                messages.remove(messageId, messageRef);
+                            }
                         }
+                    } catch (Throwable t) {
+                        logger.error("Failed to process messages cleanup queue!", t);
+                    } finally {
+                        messageCacheLock.unlock();
                     }
-                } catch (Throwable t) {
-                    logger.error("Failed to process messages cleanup queue!", t);
-                } finally {
-                    messageCacheLock.unlock();
-                }
-            }, 30, 30, TimeUnit.SECONDS);
+                }, 30, 30, TimeUnit.SECONDS);
+            }
 
             if (registerShutdownHook) {
                 // Add shutdown hook
@@ -1052,15 +1061,6 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
     }
 
     /**
-     * Sets the user of the connected account.
-     *
-     * @param yourself The user of the connected account.
-     */
-    public void setYourself(User yourself) {
-        you = yourself;
-    }
-
-    /**
      * Gets the time offset between the Discord time and our local time.
      * Might be <code>null</code> if it hasn't been calculated yet.
      *
@@ -1181,18 +1181,20 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
      * @param message The message to add.
      */
     public void addMessageToCache(Message message) {
-        messageCacheLock.lock();
-        try {
-            messages.compute(message.getId(), (key, value) -> {
-                if ((value == null) || (value.get() == null)) {
-                    WeakReference<Message> result = new WeakReference<>(message, messagesCleanupQueue);
-                    messageIdByRef.put(result, key);
-                    return result;
-                }
-                return value;
-            });
-        } finally {
-            messageCacheLock.unlock();
+        if (addAllMessageToCacheEnabled) {
+            messageCacheLock.lock();
+            try {
+                messages.compute(message.getId(), (key, value) -> {
+                    if ((value == null) || (value.get() == null)) {
+                        WeakReference<Message> result = new WeakReference<>(message, messagesCleanupQueue);
+                        messageIdByRef.put(result, key);
+                        return result;
+                    }
+                    return value;
+                });
+            } finally {
+                messageCacheLock.unlock();
+            }
         }
     }
 
@@ -1328,7 +1330,7 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
      * @param objectId    The id of the object.
      * @param <T>         The type of the listeners.
      * @return A map with all registered listeners that implement one or more {@code ObjectAttachableListener}s and
-     *         their assigned listener classes they listen to.
+     * their assigned listener classes they listen to.
      */
     @SuppressWarnings("unchecked")
     public <T extends ObjectAttachableListener> Map<T, List<Class<T>>> getObjectListeners(
@@ -1583,10 +1585,6 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
                 .execute(result -> jsonToApplicationCommandList(result.getJsonBody()));
     }
 
-    //////////////////////////////////////////////
-    //Internal Application Command Utility methods
-    //////////////////////////////////////////////
-
     private ArrayNode applicationCommandBuildersToArrayNode(
             List<? extends ApplicationCommandBuilder<?, ?, ?>> applicationCommandBuilderList) {
         ArrayNode body = JsonNodeFactory.instance.arrayNode();
@@ -1597,6 +1595,10 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
         }
         return body;
     }
+
+    //////////////////////////////////////////////
+    //Internal Application Command Utility methods
+    //////////////////////////////////////////////
 
     private List<ServerApplicationCommandPermissions> jsonToServerApplicationCommandPermissionsList(
             JsonNode resultJson) {
@@ -1659,12 +1661,6 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
         return uncachedMessageUtil;
     }
 
-    /*
-     * Note: You might think the return type should be Optional<WebsocketAdapter>, because it's null till we receive
-     *       the gateway from Discord. However, the DiscordApi instance is only passed to the user, AFTER we connect
-     *       so for the end user it is in fact never null.
-     */
-
     /**
      * Gets the websocket adapter which is used to connect to Discord.
      *
@@ -1673,6 +1669,12 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
     public DiscordWebSocketAdapter getWebSocketAdapter() {
         return websocketAdapter;
     }
+
+    /*
+     * Note: You might think the return type should be Optional<WebsocketAdapter>, because it's null till we receive
+     *       the gateway from Discord. However, the DiscordApi instance is only passed to the user, AFTER we connect
+     *       so for the end user it is in fact never null.
+     */
 
     @Override
     public AccountType getAccountType() {
@@ -1783,7 +1785,7 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
      * REST API and websocket.
      *
      * @return the proxy selector which should be used to determine the proxies that should be used to connect to the
-     *         Discord REST API and websocket.
+     * Discord REST API and websocket.
      */
     public Optional<ProxySelector> getProxySelector() {
         return Optional.ofNullable(proxySelector);
@@ -1830,7 +1832,6 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
         return status;
     }
 
-
     /**
      * Sets the current activity, along with type and streaming Url.
      *
@@ -1848,7 +1849,6 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
         }
         websocketAdapter.updateStatus();
     }
-
 
     @Override
     public void updateActivity(String name) {
@@ -1878,6 +1878,15 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
     @Override
     public User getYourself() {
         return you;
+    }
+
+    /**
+     * Sets the user of the connected account.
+     *
+     * @param yourself The user of the connected account.
+     */
+    public void setYourself(User yourself) {
+        you = yourself;
     }
 
     @Override

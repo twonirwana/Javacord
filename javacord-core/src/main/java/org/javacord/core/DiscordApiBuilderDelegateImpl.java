@@ -134,6 +134,8 @@ public class DiscordApiBuilderDelegateImpl implements DiscordApiBuilderDelegate 
      */
     private boolean userCacheEnabled = true;
 
+    private boolean addAllMessageToCacheEnabled = true;
+
     /**
      * The globally attachable listeners to register for every created DiscordApi instance.
      */
@@ -199,7 +201,8 @@ public class DiscordApiBuilderDelegateImpl implements DiscordApiBuilderDelegate 
             new DiscordApiImpl(accountType, token, currentShard.get(), totalShards.get(), intents,
                     waitForServersOnStartup, waitForUsersOnStartup, registerShutdownHook, globalRatelimiter,
                     gatewayIdentifyRatelimiter, proxySelector, proxy, proxyAuthenticator, trustAllCertificates,
-                    future, null, preparedListeners, preparedUnspecifiedListeners, userCacheEnabled);
+                    future, null, preparedListeners, preparedUnspecifiedListeners, userCacheEnabled,
+                    addAllMessageToCacheEnabled);
         }
         return future;
     }
@@ -413,6 +416,17 @@ public class DiscordApiBuilderDelegateImpl implements DiscordApiBuilderDelegate 
     @Override
     public boolean isUserCacheEnabled() {
         return userCacheEnabled;
+    }
+
+
+    @Override
+    public void setAddAllMessageToCacheEnabled(boolean enabled) {
+        addAllMessageToCacheEnabled = enabled;
+    }
+
+    @Override
+    public boolean isAddAllMessageToCacheEnabled() {
+        return addAllMessageToCacheEnabled;
     }
 
     @Override
