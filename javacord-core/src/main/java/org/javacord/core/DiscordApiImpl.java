@@ -1182,7 +1182,7 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
      * @param message The message to add.
      */
     public void addMessageToCache(Message message) {
-        if (addAllMessageToCacheEnabled) {
+        if (addAllMessageToCacheEnabled || message.isCachedForever()) {
             messageCacheLock.lock();
             try {
                 messages.compute(message.getId(), (key, value) -> {
