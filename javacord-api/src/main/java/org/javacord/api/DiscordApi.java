@@ -847,6 +847,8 @@ public interface DiscordApi extends GloballyAttachableListenerManager {
         return !getServers().stream().anyMatch(Server::hasAllMembersInCache);
     }
 
+    boolean isAddAllMessageToCacheEnabled();
+
     /**
      * Gets a collection with all currently cached users.
      *

@@ -2001,6 +2001,11 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
     }
 
     @Override
+    public boolean isAddAllMessageToCacheEnabled() {
+        return addAllMessageToCacheEnabled;
+    }
+
+    @Override
     public Collection<User> getCachedUsers() {
         return getEntityCache().get().getMemberCache().getUserCache().getUsers();
     }
