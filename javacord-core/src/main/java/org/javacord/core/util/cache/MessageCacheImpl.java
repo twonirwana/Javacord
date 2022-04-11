@@ -90,7 +90,8 @@ public class MessageCacheImpl implements MessageCache, Cleanupable {
 
         setAutomaticCleanupEnabled(automaticCleanupEnabled);
 
-        if (capacity > 0) {    // After minimum JDK 9 is required this can be switched to use a Cleaner
+        if (api.isAddAllMessageToCacheEnabled()) {
+            // After minimum JDK 9 is required this can be switched to use a Cleaner
             messagesCleanupFuture = api.getThreadPool().getScheduler().scheduleWithFixedDelay(() -> {
                 api.getMessageCacheLock().lock();
                 try {

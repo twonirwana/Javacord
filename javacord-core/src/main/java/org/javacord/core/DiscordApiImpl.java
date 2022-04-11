@@ -1062,6 +1062,15 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
     }
 
     /**
+     * Sets the user of the connected account.
+     *
+     * @param yourself The user of the connected account.
+     */
+    public void setYourself(User yourself) {
+        you = yourself;
+    }
+
+    /**
      * Gets the time offset between the Discord time and our local time.
      * Might be <code>null</code> if it hasn't been calculated yet.
      *
@@ -1331,7 +1340,7 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
      * @param objectId    The id of the object.
      * @param <T>         The type of the listeners.
      * @return A map with all registered listeners that implement one or more {@code ObjectAttachableListener}s and
-     * their assigned listener classes they listen to.
+     *         their assigned listener classes they listen to.
      */
     @SuppressWarnings("unchecked")
     public <T extends ObjectAttachableListener> Map<T, List<Class<T>>> getObjectListeners(
@@ -1586,6 +1595,10 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
                 .execute(result -> jsonToApplicationCommandList(result.getJsonBody()));
     }
 
+    //////////////////////////////////////////////
+    //Internal Application Command Utility methods
+    //////////////////////////////////////////////
+
     private ArrayNode applicationCommandBuildersToArrayNode(
             List<? extends ApplicationCommandBuilder<?, ?, ?>> applicationCommandBuilderList) {
         ArrayNode body = JsonNodeFactory.instance.arrayNode();
@@ -1596,10 +1609,6 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
         }
         return body;
     }
-
-    //////////////////////////////////////////////
-    //Internal Application Command Utility methods
-    //////////////////////////////////////////////
 
     private List<ServerApplicationCommandPermissions> jsonToServerApplicationCommandPermissionsList(
             JsonNode resultJson) {
@@ -1662,6 +1671,12 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
         return uncachedMessageUtil;
     }
 
+    /*
+     * Note: You might think the return type should be Optional<WebsocketAdapter>, because it's null till we receive
+     *       the gateway from Discord. However, the DiscordApi instance is only passed to the user, AFTER we connect
+     *       so for the end user it is in fact never null.
+     */
+
     /**
      * Gets the websocket adapter which is used to connect to Discord.
      *
@@ -1670,12 +1685,6 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
     public DiscordWebSocketAdapter getWebSocketAdapter() {
         return websocketAdapter;
     }
-
-    /*
-     * Note: You might think the return type should be Optional<WebsocketAdapter>, because it's null till we receive
-     *       the gateway from Discord. However, the DiscordApi instance is only passed to the user, AFTER we connect
-     *       so for the end user it is in fact never null.
-     */
 
     @Override
     public AccountType getAccountType() {
@@ -1786,7 +1795,7 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
      * REST API and websocket.
      *
      * @return the proxy selector which should be used to determine the proxies that should be used to connect to the
-     * Discord REST API and websocket.
+     *         Discord REST API and websocket.
      */
     public Optional<ProxySelector> getProxySelector() {
         return Optional.ofNullable(proxySelector);
@@ -1833,6 +1842,7 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
         return status;
     }
 
+
     /**
      * Sets the current activity, along with type and streaming Url.
      *
@@ -1850,6 +1860,7 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
         }
         websocketAdapter.updateStatus();
     }
+
 
     @Override
     public void updateActivity(String name) {
@@ -1879,15 +1890,6 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
     @Override
     public User getYourself() {
         return you;
-    }
-
-    /**
-     * Sets the user of the connected account.
-     *
-     * @param yourself The user of the connected account.
-     */
-    public void setYourself(User yourself) {
-        you = yourself;
     }
 
     @Override
