@@ -538,32 +538,33 @@ public class DiscordApiImpl implements DiscordApi, DispatchQueueSelector {
     /**
      * Creates a new discord api instance.
      *
-     * @param accountType                The account type of the instance.
-     * @param token                      The token used to connect without any account type specific prefix.
-     * @param currentShard               The current shard the bot should connect to.
-     * @param totalShards                The total amount of shards.
-     * @param intents                    The intents for the events which should be received.
-     * @param waitForServersOnStartup    Whether Javacord should wait for all servers
-     *                                   to become available on startup or not.
-     * @param waitForUsersOnStartup      Whether Javacord should wait for all users
-     *                                   to become available on startup or not.
-     * @param registerShutdownHook       Whether the shutdown hook should be registered or not.
-     * @param globalRatelimiter          The ratelimiter used for global ratelimits.
-     * @param gatewayIdentifyRatelimiter The ratelimiter used to respect the 5-second gateway identify ratelimit.
-     * @param proxySelector              The proxy selector which should be used to determine the proxies that
-     *                                   should be used to connect to the Discord REST API and websocket.
-     * @param proxy                      The proxy which should be used to connect to the Discord REST API and
-     *                                   websocket.
-     * @param proxyAuthenticator         The authenticator that should be used to authenticate against proxies that
-     *                                   require it.
-     * @param trustAllCertificates       Whether to trust all SSL certificates.
-     * @param ready                      The future which will be completed when the connection to Discord was
-     *                                   successful.
-     * @param dns                        The DNS instance to use in the OkHttp client. This should only be used in
-     *                                   testing.
-     * @param listenerSourceMap          The functions to create listeners for pre-registration.
-     * @param unspecifiedListeners       The listeners of unspecified types to pre-register.
-     * @param userCacheEnabled           Whether the user cache should be enabled.
+     * @param accountType                   The account type of the instance.
+     * @param token                         The token used to connect without any account type specific prefix.
+     * @param currentShard                  The current shard the bot should connect to.
+     * @param totalShards                   The total amount of shards.
+     * @param intents                       The intents for the events which should be received.
+     * @param waitForServersOnStartup       Whether Javacord should wait for all servers
+     *                                      to become available on startup or not.
+     * @param waitForUsersOnStartup         Whether Javacord should wait for all users
+     *                                      to become available on startup or not.
+     * @param registerShutdownHook          Whether the shutdown hook should be registered or not.
+     * @param globalRatelimiter             The ratelimiter used for global ratelimits.
+     * @param gatewayIdentifyRatelimiter    The ratelimiter used to respect the 5-second gateway identify ratelimit.
+     * @param proxySelector                 The proxy selector which should be used to determine the proxies that
+     *                                      should be used to connect to the Discord REST API and websocket.
+     * @param proxy                         The proxy which should be used to connect to the Discord REST API and
+     *                                      websocket.
+     * @param proxyAuthenticator            The authenticator that should be used to authenticate against proxies that
+     *                                      require it.
+     * @param trustAllCertificates          Whether to trust all SSL certificates.
+     * @param ready                         The future which will be completed when the connection to Discord was
+     *                                      successful.
+     * @param dns                           The DNS instance to use in the OkHttp client. This should only be used in
+     *                                      testing.
+     * @param listenerSourceMap             The functions to create listeners for pre-registration.
+     * @param unspecifiedListeners          The listeners of unspecified types to pre-register.
+     * @param userCacheEnabled              Whether the user cache should be enabled.
+     * @param addAllMessageToCacheEnabled   Whether adding all new messages to the cache is enabled.
      */
     @SuppressWarnings("unchecked")
     public DiscordApiImpl(

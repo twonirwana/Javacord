@@ -134,6 +134,9 @@ public class DiscordApiBuilderDelegateImpl implements DiscordApiBuilderDelegate 
      */
     private boolean userCacheEnabled = true;
 
+    /**
+     * Whether adding all new messages to the cache is enabled.
+     */
     private boolean addAllMessageToCacheEnabled = true;
 
     /**
